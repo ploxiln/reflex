@@ -293,6 +293,8 @@ which will print out each command as interpreted by reflex.
 
 ### Open file limits
 
+(This is probably no longer applicable, after the switch from fsnotify to watcher.)
+
 Reflex currently must hold an open file descriptor for every directory it's
 watching, recursively. If you run reflex at the top of a big directory tree, you
 can easily run into file descriptor limits. You might see an error like this:

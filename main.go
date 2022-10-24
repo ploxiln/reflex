@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	flag "github.com/ogier/pflag"
+	"github.com/radovskyb/watcher"
 )
 
 const defaultSubSymbol = "{}"
@@ -22,6 +22,7 @@ var (
 	flagConf       string
 	flagSequential bool
 	flagDecoration string
+	flagPollPeriod time.Duration
 	decoration     Decoration
 	verbose        bool
 	globalFlags    = flag.NewFlagSet("", flag.ContinueOnError)
@@ -71,6 +72,8 @@ func init() {
             Don't run multiple commands at the same time.`)
 	globalFlags.StringVarP(&flagDecoration, "decoration", "d", "plain", `
             How to decorate command output. Choices: none, plain, fancy.`)
+	globalFlags.DurationVarP(&flagPollPeriod, "poll-period", "p", 500*time.Millisecond, `
+	    How frequently to scan the filesystem for changes.`)
 	globalConfig.registerFlags(globalFlags)
 }
 
@@ -177,13 +180,6 @@ func main() {
 		reason := fmt.Sprintf("Interrupted (%s). Cleaning up children...", s)
 		cleanup(reason)
 	}()
-	defer cleanup("Cleaning up.")
-
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer watcher.Close()
 
 	changes := make(chan string)
 	broadcastChanges := make([]chan string, len(reflexes))
@@ -191,7 +187,13 @@ func main() {
 	for i := range reflexes {
 		broadcastChanges[i] = make(chan string)
 	}
-	go watch(".", watcher, changes, done, reflexes)
+
+	fsmonitor := watcher.New()
+	go func() {
+		err := fsmonitor.Start(flagPollPeriod)
+		done <- err
+	}()
+	go watch(".", fsmonitor, changes, done, reflexes)
 	go broadcast(broadcastChanges, changes)
 	go printOutput(stdout, os.Stdout)
 
@@ -199,7 +201,11 @@ func main() {
 		reflex.Start(broadcastChanges[i])
 	}
 
-	log.Fatal(<-done)
+	err := <-done
+	if err != nil {
+		log.Fatal(err)
+	}
+	cleanup("Cleaning up.")
 }
 
 func broadcast(outs []chan string, in <-chan string) {
