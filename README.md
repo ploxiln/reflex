@@ -59,6 +59,8 @@ OPTIONS are given below:
             Only match directories (not files).
       --only-files=false:
             Only match files (not directories).
+  -p, --poll-period=500ms:
+	    How frequently to scan the filesystem for changes.
   -r, --regex=[]:
             A regular expression to match filenames. (May be repeated.)
   -e, --sequential=false:
