@@ -100,9 +100,8 @@ func printGlobals() {
 	fmt.Println("+---------")
 }
 
-func cleanup(reason string) {
+func cleanup() {
 	cleanupMu.Lock()
-	fmt.Println(reason)
 	wg := &sync.WaitGroup{}
 	for _, reflex := range reflexes {
 		if reflex.Running() {
@@ -116,7 +115,6 @@ func cleanup(reason string) {
 	wg.Wait()
 	// Give just a little time to finish printing output.
 	time.Sleep(10 * time.Millisecond)
-	os.Exit(0)
 }
 
 func main() {
@@ -171,16 +169,6 @@ func main() {
 		reflexes = append(reflexes, reflex)
 	}
 
-	// Catch ctrl-c and make sure to kill off children.
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
-	signal.Notify(signals, os.Signal(syscall.SIGTERM))
-	go func() {
-		s := <-signals
-		reason := fmt.Sprintf("Interrupted (%s). Cleaning up children...", s)
-		cleanup(reason)
-	}()
-
 	changes := make(chan string)
 	broadcastChanges := make([]chan string, len(reflexes))
 	done := make(chan error)
@@ -193,6 +181,17 @@ func main() {
 		err := fsmonitor.Start(flagPollPeriod)
 		done <- err
 	}()
+
+	// Catch ctrl-c and make sure to kill off children.
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt)
+	signal.Notify(signals, os.Signal(syscall.SIGTERM))
+	go func() {
+		s := <-signals
+		fmt.Printf("Interrupted (%s). Cleaning up children...\n", s)
+		fsmonitor.Close()
+	}()
+
 	go watch(".", fsmonitor, changes, done, reflexes)
 	go broadcast(broadcastChanges, changes)
 	go printOutput(stdout, os.Stdout)
@@ -205,7 +204,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cleanup("Cleaning up.")
+	fmt.Println("Cleaning up.")
+	cleanup()
+
+	// if --start-service command exited with error, propagate it
+	for _, reflex := range reflexes {
+		if reflex.exitCode != 0 {
+			os.Exit(reflex.exitCode)
+		}
+	}
+	os.Exit(0)
 }
 
 func broadcast(outs []chan string, in <-chan string) {

@@ -35,8 +35,9 @@ type Reflex struct {
 	timeout time.Duration
 
 	// Used for services (startService = true)
-	cmd *exec.Cmd
-	tty *os.File
+	cmd      *exec.Cmd
+	tty      *os.File
+	exitCode int
 }
 
 // NewReflex prepares a Reflex from a Config, with sanity checking.
@@ -221,6 +222,7 @@ func (r *Reflex) terminate() {
 	for {
 		select {
 		case <-r.done:
+			r.running = false
 			return
 		case <-timer.C:
 			if sig == syscall.SIGINT {
@@ -303,11 +305,15 @@ func (r *Reflex) runCommand(name string, stdout chan<- OutMsg) {
 
 	r.mu.Lock()
 	r.running = true
+	r.killed = false
 	r.mu.Unlock()
 	go func() {
 		err := cmd.Wait()
 		if !r.Killed() && err != nil {
 			stdout <- OutMsg{r.id, fmt.Sprintf("(error exit: %s)", err)}
+		}
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			r.exitCode = exitErr.ExitCode()
 		}
 		r.done <- struct{}{}
 
