@@ -4,6 +4,13 @@ Reflex is a small tool to watch a directory and rerun a command when certain
 files change. It's great for automatically running compile/lint/test tasks and
 for reloading your application when the code changes.
 
+This is a fork of upstream  https://github.com/cespare/reflex/ which:
+ * switches from "fsnotify" file-change notification APIs, to periodically checking
+   all files, to support situations without reliable file-change notification APIs
+   (e.g. network filesystems)
+ * exits with the exit status of the run command/service, instead of always with
+   an error exit code
+
 ## A simple example
 
     # Rerun make whenever a .c file changes
@@ -14,12 +21,10 @@ for reloading your application when the code changes.
 You can download binaries from the
 [Releases page](https://github.com/cespare/reflex/releases).
 
-To compile from source, you'll need Go 1.13+ installed.
-
-If you have Go 1.16 or later, you can download and install the latest module
+With Go 1.16 or later, you can download and install the latest module
 version directly with
 
-    go install github.com/cespare/reflex@latest
+    go install github.com/ploxiln/reflex@latest
 
 Reflex is only tested on Linux and macOS.
 
@@ -309,20 +314,10 @@ There are several things you can do to get around this problem.
 See [issue #6](https://github.com/cespare/reflex/issues/6) for some more
 background on this issue.
 
-## The competition
-
-* https://github.com/guard/guard
-* https://github.com/alexch/rerun
-* https://github.com/mynyml/watchr
-* https://github.com/eaburns/Watch
-* https://github.com/alloy/kicker
-* https://github.com/eradman/entr
-
-### Why you should use reflex instead
+### Why you should use reflex instead of other file change watchers:
 
 * Reflex has no dependencies. No need to install Ruby or anything like that.
-* Reflex uses an appropriate file watching mechanism to watch for changes
-  efficiently on your platform.
+* ~Reflex uses an appropriate file watching mechanism to watch for changes efficiently on your platform.~
 * Reflex gives your command the name of the file that changed.
 * No DSL to learn -- just give it a shell command.
 * No plugins.
@@ -330,9 +325,4 @@ background on this issue.
 
 ## Authors
 
-* Benedikt Böhm ([hollow](https://github.com/hollow))
-* Caleb Spare ([cespare](https://github.com/cespare))
-* PJ Eby ([pjeby](https://github.com/pjeby))
-* Rich Liebling ([rliebling](https://github.com/rliebling))
-* Seth W. Klein ([sethwklein](https://github.com/sethwklein))
-* Vincent Vanackere ([vanackere](https://github.com/vanackere))
+see https://github.com/ploxiln/reflex/graphs/contributors
