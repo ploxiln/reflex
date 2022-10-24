@@ -289,13 +289,13 @@ func (r *Reflex) runCommand(name string, stdout chan<- OutMsg) {
 
 	go func() {
 		scanner := bufio.NewScanner(tty)
-		// Allow for lines up to 100 MB.
-		scanner.Buffer(nil, 100e6)
+		// Allow for lines up to 10 MB.
+		scanner.Buffer(nil, 10e6)
 		for scanner.Scan() {
 			stdout <- OutMsg{r.id, scanner.Text()}
 		}
 		if err := scanner.Err(); errors.Is(err, bufio.ErrTooLong) {
-			infoPrintln(r.id, "Error: subprocess emitted a line longer than 100 MB")
+			infoPrintln(r.id, "Error: subprocess emitted a line longer than 10 MB")
 		}
 		// Intentionally ignore other scanner errors. Unfortunately,
 		// the pty returns a read error when the child dies naturally,
